@@ -7,6 +7,21 @@ namespace Flot
 {
     public class MvcApplication : HttpApplication
     {
+        public static readonly Metrics Metrics = new Metrics();
+
+        static MvcApplication()
+        {
+            var machineMetrics = new MachineMetrics(Metrics);
+            machineMetrics.InstallPhysicalDisk();
+            machineMetrics.InstallLogicalDisk();
+            machineMetrics.InstallCLRLocksAndThreads();
+
+            Metrics.Gauge(typeof(MvcApplication), "hey_you_guys", () =>
+            {
+                return 12;
+            });
+        }
+
         public static void RegisterGlobalFilters(GlobalFilterCollection filters)
         {
             filters.Add(new HandleErrorAttribute());
@@ -29,16 +44,6 @@ namespace Flot
 
             RegisterGlobalFilters(GlobalFilters.Filters);
             RegisterRoutes(RouteTable.Routes);
-
-            MachineMetrics.InstallPhysicalDisk();
-            MachineMetrics.InstallLogicalDisk();
-            MachineMetrics.InstallCLRLocksAndThreads();
-
-            Metrics.Gauge(typeof (MvcApplication), "hey_you_guys", () =>
-                                                                       {
-                                                                           return 12;
-                                                                       });
-
         }
     }
 }

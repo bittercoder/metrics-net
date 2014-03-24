@@ -1,6 +1,6 @@
 ﻿using System;
-using NUnit.Framework;
 using metrics.Core;
+using NUnit.Framework;
 
 namespace metrics.Tests.Core
 {
@@ -10,7 +10,7 @@ namespace metrics.Tests.Core
         [Test]
         public void NewSample_ForEachSampleType_DoesNotThrow()
         {
-            foreach(var sampleType in (HistogramMetric.SampleType[])Enum.GetValues(typeof(HistogramMetric.SampleType)))
+            foreach (HistogramMetric.SampleType sampleType in (HistogramMetric.SampleType[]) Enum.GetValues(typeof (HistogramMetric.SampleType)))
                 sampleType.NewSample();
         }
     }

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using metrics.Support;
 using NUnit.Framework;
 
 namespace metrics.Tests.Support
@@ -9,9 +10,9 @@ namespace metrics.Tests.Support
         [Test]
         public void Can_generate_random_longs()
         {
-            for(var i = 0; i < 1000; i++)
+            for (int i = 0; i < 1000; i++)
             {
-                long random = metrics.Support.Random.NextLong();
+                long random = Random.NextLong();
                 Trace.WriteLine(random);
             }
         }

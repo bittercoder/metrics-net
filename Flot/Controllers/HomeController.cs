@@ -1,6 +1,6 @@
 ﻿using System.Web.Mvc;
 using metrics;
-using metrics.Serialization;
+using metrics.Util;
 
 namespace Flot.Controllers
 {
@@ -13,8 +13,9 @@ namespace Flot.Controllers
         
         public ActionResult GetSample()
         {
-            var content = Serializer.Serialize(Metrics.AllSorted);
-            return Content(content);
+            var content = Serializer.Serialize(MvcApplication.Metrics.AllSorted);
+            
+            return Content(content,"application/json");
         }
     }
 }

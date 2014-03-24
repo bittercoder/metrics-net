@@ -9,14 +9,21 @@ namespace metrics
     /// </summary>
     public  class MachineMetrics
     {
+        readonly Metrics _metrix;
         private const string TotalInstance = "_Total";
         private const string GlobalInstance = "_Global_";
-        private  Metrics _metrix = new Metrics();
         
+        public MachineMetrics(Metrics metrics)
+        {
+            if (metrics == null) throw new ArgumentNullException("metrics");
+            _metrix = metrics;
+        }
+
         public  void InstallAll()
         {
             InstallPhysicalDisk();
             InstallLogicalDisk();
+            InstallCLRLocksAndThreads();
         }
 
         public  void InstallPhysicalDisk()

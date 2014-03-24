@@ -2,23 +2,24 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using NUnit.Framework;
+using metrics.Core;
 using metrics.Reporting;
 using metrics.Tests.Core;
+using NUnit.Framework;
 
 namespace metrics.Tests.Reporting
 {
     [TestFixture]
     public class FileReporterTests
     {
-        private string _filename;
-        private static Metrics _metrics;
-
         [SetUp]
         public void Setup()
         {
             _filename = Path.GetTempFileName();
         }
+
+        string _filename;
+        static Metrics _metrics;
 
         [TestFixtureTearDown]
         public void Cleanup()
@@ -29,34 +30,46 @@ namespace metrics.Tests.Reporting
             }
         }
 
-        [Test]
-        public void File_is_created_with_human_readable_content()
+        static void RegisterMetrics()
         {
-            RegisterMetrics();
+            _metrics = new Metrics();
 
-            using (var reporter = new FileReporter(_filename, _metrics))
-            {
-                reporter.Run();
-                Assert.IsTrue(File.Exists(_filename));
-            }
+            CounterMetric counter = _metrics.Counter(typeof (CounterTests), "Can_run_with_known_counters_counter");
+            counter.Increment(100);
 
-            var contents = File.ReadAllText(_filename);
-            Console.WriteLine(contents);
+            var queue = new Queue<int>();
+            _metrics.Gauge(typeof (GaugeTests), "Can_run_with_known_counters_gauge", () => queue.Count);
+            queue.Enqueue(1);
+            queue.Enqueue(2);
         }
 
         [Test]
-        public void File_is_created_with_json_content()
+        public void Can_run_in_background()
         {
+            const int ticks = 3;
+            var block = new ManualResetEvent(false);
+
             RegisterMetrics();
 
-            using (var reporter = new FileReporter(_filename, new JsonReportFormatter(_metrics)))
-            {
-                reporter.Run();
-                Assert.IsTrue(File.Exists(_filename));
-            }
+            ThreadPool.QueueUserWorkItem(
+                s =>
+                {
+                    using (var reporter = new FileReporter(_filename, _metrics))
+                    {
+                        reporter.Start(3, TimeUnit.Seconds);
+                        while (true)
+                        {
+                            Thread.Sleep(1000);
+                            int runs = reporter.Runs;
+                            if (runs == ticks)
+                            {
+                                block.Set();
+                            }
+                        }
+                    }
+                });
 
-            var contents = File.ReadAllText(_filename);
-            Console.WriteLine(contents);
+            block.WaitOne(TimeSpan.FromSeconds(5));
         }
 
         [Test]
@@ -64,7 +77,7 @@ namespace metrics.Tests.Reporting
         {
             RegisterMetrics();
 
-            using (var reporter = new FileReporter(_filename,_metrics))
+            using (var reporter = new FileReporter(_filename, _metrics))
             {
                 reporter.Run();
             }
@@ -91,45 +104,33 @@ namespace metrics.Tests.Reporting
         }
 
         [Test]
-        public void Can_run_in_background()
+        public void File_is_created_with_human_readable_content()
         {
-            const int ticks = 3;
-            var block = new ManualResetEvent(false);
-
             RegisterMetrics();
 
-            ThreadPool.QueueUserWorkItem(
-                s =>
-                {
-                    using (var reporter = new FileReporter(_filename, _metrics))
-                    {
-                        reporter.Start(3, TimeUnit.Seconds);
-                        while (true)
-                        {
-                            Thread.Sleep(1000);
-                            var runs = reporter.Runs;
-                            if (runs == ticks)
-                            {
-                                block.Set();
-                            }
-                        }
-                    }
-                });
+            using (var reporter = new FileReporter(_filename, _metrics))
+            {
+                reporter.Run();
+                Assert.IsTrue(File.Exists(_filename));
+            }
 
-            block.WaitOne(TimeSpan.FromSeconds(5));
+            string contents = File.ReadAllText(_filename);
+            Console.WriteLine(contents);
         }
 
-        private static void RegisterMetrics()
+        [Test]
+        public void File_is_created_with_json_content()
         {
-            _metrics = new Metrics();
- 
-            var counter = _metrics.Counter(typeof(CounterTests), "Can_run_with_known_counters_counter");
-            counter.Increment(100);
+            RegisterMetrics();
 
-            var queue = new Queue<int>();
-            _metrics.Gauge(typeof(GaugeTests), "Can_run_with_known_counters_gauge", () => queue.Count);
-            queue.Enqueue(1);
-            queue.Enqueue(2);
+            using (var reporter = new FileReporter(_filename, new JsonReportFormatter(_metrics)))
+            {
+                reporter.Run();
+                Assert.IsTrue(File.Exists(_filename));
+            }
+
+            string contents = File.ReadAllText(_filename);
+            Console.WriteLine(contents);
         }
     }
 }

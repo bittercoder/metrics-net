@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using metrics.Core;
 using metrics.Reporting;
 using metrics.Tests.Core;
 using NUnit.Framework;
@@ -10,7 +11,48 @@ namespace metrics.Tests.Reporting
     [TestFixture]
     public class ConsoleReporterTests
     {
-        private Metrics _metrics;
+        Metrics _metrics;
+
+        void RegisterMetrics()
+        {
+            _metrics = new Metrics();
+
+            CounterMetric counter = _metrics.Counter(typeof (CounterTests), "Can_run_with_known_counters_counter");
+            counter.Increment(100);
+
+            var queue = new Queue<int>();
+            _metrics.Gauge(typeof (GaugeTests), "Can_run_with_known_counters_gauge", () => queue.Count);
+            queue.Enqueue(1);
+            queue.Enqueue(2);
+        }
+
+        [Test]
+        public void Can_run_in_background()
+        {
+            const int ticks = 3;
+            var block = new ManualResetEvent(false);
+
+            RegisterMetrics();
+
+            ThreadPool.QueueUserWorkItem(
+                s =>
+                {
+                    var reporter = new ConsoleReporter(_metrics);
+                    reporter.Start(3, TimeUnit.Seconds);
+                    while (true)
+                    {
+                        Thread.Sleep(1000);
+                        int runs = reporter.Runs;
+                        if (runs == ticks)
+                        {
+                            block.Set();
+                        }
+                    }
+                }
+                );
+
+            block.WaitOne(TimeSpan.FromSeconds(5));
+        }
 
         [Test]
         public void Can_run_with_known_counters_and_human_readable_format()
@@ -31,34 +73,6 @@ namespace metrics.Tests.Reporting
         }
 
         [Test]
-        public void Can_run_in_background()
-        {
-            const int ticks = 3;
-            var block = new ManualResetEvent(false);
-
-            RegisterMetrics();
-
-            ThreadPool.QueueUserWorkItem(
-                s =>
-                    {
-                        var reporter = new ConsoleReporter(_metrics);
-                        reporter.Start(3, TimeUnit.Seconds);
-                        while(true)
-                        {
-                            Thread.Sleep(1000);
-                            var runs = reporter.Runs;
-                            if (runs == ticks)
-                            {
-                                block.Set();
-                            }    
-                        }
-                    }
-                );
-
-            block.WaitOne(TimeSpan.FromSeconds(5));
-        }
-
-        [Test]
         public void Can_stop()
         {
             var block = new ManualResetEvent(false);
@@ -76,19 +90,6 @@ namespace metrics.Tests.Reporting
                 });
 
             block.WaitOne();
-        }
-
-        private void RegisterMetrics()
-        {
-            _metrics = new Metrics();
-
-            var counter = _metrics.Counter(typeof(CounterTests), "Can_run_with_known_counters_counter");
-            counter.Increment(100);
-
-            var queue = new Queue<int>();
-             _metrics.Gauge(typeof(GaugeTests), "Can_run_with_known_counters_gauge", () => queue.Count);
-            queue.Enqueue(1);
-            queue.Enqueue(2);
         }
     }
 }
