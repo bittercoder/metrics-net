@@ -15,6 +15,7 @@ namespace metrics.graphite
         readonly int port;
         readonly string prefix;
         readonly Metrics metrics;
+        readonly string metricsContext = typeof(Metrics).FullName;
 
         protected CancellationTokenSource Token;
 
@@ -178,12 +179,17 @@ namespace metrics.graphite
             sendFloat(writer, epoch, sanitizedName, "999percentile", percentiles[5]);
         }
 
-        protected String SanitizeName(MetricName name)
+        protected virtual String SanitizeName(MetricName name)
         {
-            return name.ToString();
+            if (name.Context == metricsContext)
+            {
+                return name.Name;
+            }
+
+            return name.Context + "." + name.Name;
         }
 
-        protected String SanitizeString(String s)
+        protected virtual String SanitizeString(String s)
         {
             return s.Replace(' ', '-');
         }
